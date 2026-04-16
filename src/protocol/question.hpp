@@ -1,5 +1,7 @@
 #pragma once
 
+#include "label.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -12,31 +14,23 @@ struct DnsQuestion {
     uint16_t type{};
     uint16_t qclass{};
 
-    static auto parse(std::span<const std::byte> data)
-        -> std::pair<DnsQuestion, size_t> {
+    static auto parse(std::span<const std::byte> full_msg,
+                      size_t offset) -> std::pair<DnsQuestion, size_t> {
         DnsQuestion q;
-        size_t offset = 0;
+        auto [labels, consumed] = parse_labels(full_msg, offset);
+        q.labels = std::move(labels);
 
-        while (offset < data.size()) {
-            uint8_t len = static_cast<uint8_t>(data[offset]);
-            ++offset;
-            if (len == 0) break;
-            q.labels.emplace_back(
-                reinterpret_cast<const char*>(&data[offset]), len);
-            offset += len;
-        }
-
-        auto get_u16 = [&data, &offset]() -> uint16_t {
-            auto val = static_cast<uint16_t>(
-                (static_cast<uint16_t>(data[offset]) << 8) |
-                static_cast<uint16_t>(data[offset + 1]));
-            offset += 2;
+        size_t pos = offset + consumed;
+        auto get_u16 = [&]() -> uint16_t {
+            auto val = static_cast<uint16_t>((static_cast<uint16_t>(full_msg[pos]) << 8) |
+                                             static_cast<uint16_t>(full_msg[pos + 1]));
+            pos += 2;
             return val;
         };
         q.type = get_u16();
         q.qclass = get_u16();
 
-        return {q, offset};
+        return {q, consumed + 4};
     }
 
     auto serialize() const -> std::vector<std::byte> {

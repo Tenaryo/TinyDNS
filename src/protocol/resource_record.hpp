@@ -1,5 +1,7 @@
 #pragma once
 
+#include "label.hpp"
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -14,44 +16,39 @@ struct DnsResourceRecord {
     uint32_t ttl{};
     std::vector<std::byte> rdata;
 
-    static auto parse(std::span<const std::byte> data) -> std::pair<DnsResourceRecord, size_t> {
+    static auto parse(std::span<const std::byte> full_msg,
+                      size_t offset) -> std::pair<DnsResourceRecord, size_t> {
         DnsResourceRecord rr;
-        size_t offset = 0;
-        while (offset < data.size()) {
-            uint8_t len = static_cast<uint8_t>(data[offset]);
-            ++offset;
-            if (len == 0)
-                break;
-            rr.name.emplace_back(reinterpret_cast<const char*>(&data[offset]), len);
-            offset += len;
-        }
+        auto [labels, consumed] = parse_labels(full_msg, offset);
+        rr.name = std::move(labels);
 
-        auto get_u16 = [&data, &offset]() -> uint16_t {
-            auto val = static_cast<uint16_t>((static_cast<uint16_t>(data[offset]) << 8) |
-                                             static_cast<uint16_t>(data[offset + 1]));
-            offset += 2;
+        size_t pos = offset + consumed;
+        auto get_u16 = [&]() -> uint16_t {
+            auto val = static_cast<uint16_t>((static_cast<uint16_t>(full_msg[pos]) << 8) |
+                                             static_cast<uint16_t>(full_msg[pos + 1]));
+            pos += 2;
             return val;
         };
 
         rr.type = get_u16();
         rr.cls = get_u16();
 
-        auto get_u32 = [&data, &offset]() -> uint32_t {
-            auto val = static_cast<uint32_t>((static_cast<uint32_t>(data[offset]) << 24) |
-                                             (static_cast<uint32_t>(data[offset + 1]) << 16) |
-                                             (static_cast<uint32_t>(data[offset + 2]) << 8) |
-                                             static_cast<uint32_t>(data[offset + 3]));
-            offset += 4;
+        auto get_u32 = [&]() -> uint32_t {
+            auto val = static_cast<uint32_t>((static_cast<uint32_t>(full_msg[pos]) << 24) |
+                                             (static_cast<uint32_t>(full_msg[pos + 1]) << 16) |
+                                             (static_cast<uint32_t>(full_msg[pos + 2]) << 8) |
+                                             static_cast<uint32_t>(full_msg[pos + 3]));
+            pos += 4;
             return val;
         };
         rr.ttl = get_u32();
 
         uint16_t rdlength = get_u16();
-        rr.rdata.assign(data.begin() + static_cast<ptrdiff_t>(offset),
-                        data.begin() + static_cast<ptrdiff_t>(offset + rdlength));
-        offset += rdlength;
+        rr.rdata.assign(full_msg.begin() + static_cast<ptrdiff_t>(pos),
+                        full_msg.begin() + static_cast<ptrdiff_t>(pos + rdlength));
+        pos += rdlength;
 
-        return {rr, offset};
+        return {rr, pos - offset};
     }
 
     auto serialize() const -> std::vector<std::byte> {

@@ -18,12 +18,12 @@ struct DnsMessage {
         msg.header = DnsHeader::parse(data);
         size_t offset = 12;
         for (uint16_t i = 0; i < msg.header.qdcount; ++i) {
-            auto [q, consumed] = DnsQuestion::parse(data.subspan(offset));
+            auto [q, consumed] = DnsQuestion::parse(data, offset);
             msg.questions.push_back(std::move(q));
             offset += consumed;
         }
         for (uint16_t i = 0; i < msg.header.ancount; ++i) {
-            auto [rr, consumed] = DnsResourceRecord::parse(data.subspan(offset));
+            auto [rr, consumed] = DnsResourceRecord::parse(data, offset);
             msg.answers.push_back(std::move(rr));
             offset += consumed;
         }

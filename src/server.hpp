@@ -20,15 +20,17 @@ auto create_response(std::span<const std::byte> request) -> std::vector<std::byt
     msg.header.ra = false;
     msg.header.z = 0;
     msg.header.rcode = (msg.header.opcode == 0) ? 0 : 4;
-    msg.header.ancount = 1;
+    msg.header.ancount = static_cast<uint16_t>(msg.questions.size());
 
-    DnsResourceRecord answer{};
-    answer.name = msg.questions[0].labels;
-    answer.type = 1;
-    answer.cls = 1;
-    answer.ttl = 60;
-    answer.rdata = {std::byte{0x08}, std::byte{0x08}, std::byte{0x08}, std::byte{0x08}};
-    msg.answers.push_back(std::move(answer));
+    for (const auto& q : msg.questions) {
+        DnsResourceRecord answer{};
+        answer.name = q.labels;
+        answer.type = 1;
+        answer.cls = 1;
+        answer.ttl = 60;
+        answer.rdata = {std::byte{0x08}, std::byte{0x08}, std::byte{0x08}, std::byte{0x08}};
+        msg.answers.push_back(std::move(answer));
+    }
 
     return msg.serialize();
 }
