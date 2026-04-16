@@ -8,15 +8,15 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_library(dns_core INTERFACE)
 target_include_directories(dns_core INTERFACE ${CMAKE_SOURCE_DIR}/src)
-
-add_executable(dns-server src/main.cpp)
-target_link_libraries(dns-server PRIVATE dns_core)
-target_compile_features(dns-server PRIVATE cxx_std_23)
-target_compile_options(dns-server PRIVATE
+target_compile_features(dns_core INTERFACE cxx_std_23)
+target_compile_options(dns_core INTERFACE
     -Wall -Wextra -Wpedantic -Werror -Wshadow -Wconversion
     $<$<CONFIG:Debug>:-g -O0>
     $<$<CONFIG:Release>:-O3>
 )
+
+add_executable(dns-server src/main.cpp)
+target_link_libraries(dns-server PRIVATE dns_core)
 
 option(BUILD_TESTS "Build tests" ON)
 if(BUILD_TESTS)
