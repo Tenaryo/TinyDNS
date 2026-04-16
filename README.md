@@ -1,36 +1,38 @@
-[![progress-banner](https://backend.codecrafters.io/progress/dns-server/c3861647-27a9-4325-b890-096be2132fcd)](https://app.codecrafters.io/users/codecrafters-bot?r=2qF)
+# Mini DNS
 
-This is a starting point for C++ solutions to the
-["Build Your Own DNS server" Challenge](https://app.codecrafters.io/courses/dns-server/overview).
+A lightweight DNS server implementation in C++23.
 
-In this challenge, you'll build a DNS server that's capable of parsing and
-creating DNS packets, responding to DNS queries, handling various record types
-and doing recursive resolve. Along the way we'll learn about the DNS protocol,
-DNS packet format, root servers, authoritative servers, forwarding servers,
-various record types (A, AAAA, CNAME, etc) and more.
+## Current Features
 
-**Note**: If you're viewing this repo on GitHub, head over to
-[codecrafters.io](https://codecrafters.io) to try the challenge.
+- DNS message header parsing and response generation (RFC 1035)
+- UDP socket server listening on port 2053
+- Responds to DNS queries with correct header fields
 
-# Passing the first stage
+## Architecture
 
-The entry point for your `your_program.sh` implementation is in `src/main.cpp`.
-Study and uncomment the relevant code, and push your changes to pass the first
-stage:
-
-```sh
-git commit -am "pass 1st stage" # any msg
-git push origin master
+```
+src/
+├── main.cpp                  # Entry point
+├── server.hpp                # DnsServer - UDP socket lifecycle & event loop
+└── protocol/
+    ├── header.hpp            # DnsHeader - parse/serialize DNS header
+    └── message.hpp           # DnsMessage - top-level DNS message structure
 ```
 
-Time to move on to the next stage!
+- **protocol/** — Protocol layer: data structures and encoding/decoding for DNS packet format
+- **server.hpp** — Transport layer: socket management, request/response handling
+- **main.cpp** — Minimal entry point
 
-# Stage 2 & beyond
+## Build & Test
 
-Note: This section is for stages 2 and beyond.
+```sh
+./build.sh && ./run_tests.sh
+```
 
-1. Ensure you have `cmake` installed locally
-1. Run `./your_program.sh` to run your program, which is implemented in
-   `src/main.cpp`.
-1. Commit your changes and run `git push origin master` to submit your solution
-   to CodeCrafters. Test output will be streamed to your terminal.
+## Record Types
+
+*To be implemented.*
+
+## Recursive Resolution
+
+*To be implemented.*
