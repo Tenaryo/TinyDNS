@@ -23,7 +23,7 @@ auto create_response(std::span<const std::byte> request) -> std::vector<std::byt
     msg.header.ancount = 1;
 
     DnsResourceRecord answer{};
-    answer.name = {"codecrafters", "io"};
+    answer.name = msg.questions[0].labels;
     answer.type = 1;
     answer.cls = 1;
     answer.ttl = 60;
