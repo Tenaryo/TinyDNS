@@ -1,10 +1,13 @@
 #pragma once
 
+#include "codec.hpp"
 #include "label.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <numeric>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,27 +26,18 @@ struct DnsResourceRecord {
         rr.name = std::move(labels);
 
         size_t pos = offset + consumed;
-        auto get_u16 = [&]() -> uint16_t {
-            auto val = static_cast<uint16_t>((static_cast<uint16_t>(full_msg[pos]) << 8) |
-                                             static_cast<uint16_t>(full_msg[pos + 1]));
-            pos += 2;
-            return val;
-        };
+        if (pos + 10 > full_msg.size())
+            throw std::runtime_error("DNS resource record truncated");
 
-        rr.type = get_u16();
-        rr.cls = get_u16();
+        rr.type = read_u16(full_msg, pos);
+        rr.cls = read_u16(full_msg, pos + 2);
+        rr.ttl = read_u32(full_msg, pos + 4);
+        uint16_t rdlength = read_u16(full_msg, pos + 8);
 
-        auto get_u32 = [&]() -> uint32_t {
-            auto val = static_cast<uint32_t>((static_cast<uint32_t>(full_msg[pos]) << 24) |
-                                             (static_cast<uint32_t>(full_msg[pos + 1]) << 16) |
-                                             (static_cast<uint32_t>(full_msg[pos + 2]) << 8) |
-                                             static_cast<uint32_t>(full_msg[pos + 3]));
-            pos += 4;
-            return val;
-        };
-        rr.ttl = get_u32();
+        pos += 10;
+        if (pos + rdlength > full_msg.size())
+            throw std::runtime_error("DNS resource record rdata truncated");
 
-        uint16_t rdlength = get_u16();
         rr.rdata.assign(full_msg.begin() + static_cast<ptrdiff_t>(pos),
                         full_msg.begin() + static_cast<ptrdiff_t>(pos + rdlength));
         pos += rdlength;
@@ -52,30 +46,18 @@ struct DnsResourceRecord {
     }
 
     auto serialize() const -> std::vector<std::byte> {
+        size_t name_size = std::accumulate(
+            name.begin(), name.end(), size_t{1}, [](size_t acc, const std::string& s) {
+                return acc + 1 + s.size();
+            });
         std::vector<std::byte> buf;
-        for (const auto& label : name) {
-            buf.push_back(static_cast<std::byte>(label.size()));
-            for (char c : label) {
-                buf.push_back(static_cast<std::byte>(c));
-            }
-        }
-        buf.push_back(std::byte{0});
+        buf.reserve(name_size + 10 + rdata.size());
 
-        auto put_u16 = [&buf](uint16_t val) {
-            buf.push_back(static_cast<std::byte>(val >> 8));
-            buf.push_back(static_cast<std::byte>(val & 0xFF));
-        };
-        put_u16(type);
-        put_u16(cls);
-
-        auto put_u32 = [&buf](uint32_t val) {
-            buf.push_back(static_cast<std::byte>((val >> 24) & 0xFF));
-            buf.push_back(static_cast<std::byte>((val >> 16) & 0xFF));
-            buf.push_back(static_cast<std::byte>((val >> 8) & 0xFF));
-            buf.push_back(static_cast<std::byte>(val & 0xFF));
-        };
-        put_u32(ttl);
-        put_u16(static_cast<uint16_t>(rdata.size()));
+        append_labels(buf, name);
+        append_u16(buf, type);
+        append_u16(buf, cls);
+        append_u32(buf, ttl);
+        append_u16(buf, static_cast<uint16_t>(rdata.size()));
         buf.insert(buf.end(), rdata.begin(), rdata.end());
 
         return buf;

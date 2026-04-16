@@ -1,9 +1,12 @@
 #pragma once
 
+#include "codec.hpp"
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <stdexcept>
 
 struct DnsHeader {
     uint16_t id{};
@@ -21,9 +24,11 @@ struct DnsHeader {
     uint16_t arcount{};
 
     static auto parse(std::span<const std::byte> data) -> DnsHeader {
+        if (data.size() < 12)
+            throw std::runtime_error("DNS header too short");
+
         DnsHeader hdr{};
-        hdr.id = static_cast<uint16_t>((static_cast<uint16_t>(data[0]) << 8) |
-                                       static_cast<uint16_t>(data[1]));
+        hdr.id = read_u16(data, 0);
 
         uint8_t byte2 = static_cast<uint8_t>(data[2]);
         uint8_t byte3 = static_cast<uint8_t>(data[3]);
@@ -38,14 +43,10 @@ struct DnsHeader {
         hdr.z = (byte3 >> 4) & 0x7;
         hdr.rcode = byte3 & 0xF;
 
-        auto get_u16 = [&data](size_t idx) -> uint16_t {
-            return static_cast<uint16_t>((static_cast<uint16_t>(data[idx]) << 8) |
-                                         static_cast<uint16_t>(data[idx + 1]));
-        };
-        hdr.qdcount = get_u16(4);
-        hdr.ancount = get_u16(6);
-        hdr.nscount = get_u16(8);
-        hdr.arcount = get_u16(10);
+        hdr.qdcount = read_u16(data, 4);
+        hdr.ancount = read_u16(data, 6);
+        hdr.nscount = read_u16(data, 8);
+        hdr.arcount = read_u16(data, 10);
 
         return hdr;
     }

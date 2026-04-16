@@ -2,16 +2,16 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <set>
 #include <span>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 inline auto parse_labels(std::span<const std::byte> full_msg,
                          size_t offset) -> std::pair<std::vector<std::string>, size_t> {
     std::vector<std::string> labels;
-    std::set<size_t> visited;
+    std::unordered_set<size_t> visited;
     size_t local_consumed = 0;
     bool followed_pointer = false;
     size_t jump_offset = offset;
