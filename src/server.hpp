@@ -11,25 +11,31 @@
 #include <unistd.h>
 #include <vector>
 
+auto create_response(std::span<const std::byte> request) -> std::vector<std::byte> {
+    auto msg = DnsMessage::parse(request);
+
+    msg.header.qr = true;
+    msg.header.aa = false;
+    msg.header.tc = false;
+    msg.header.ra = false;
+    msg.header.z = 0;
+    msg.header.rcode = (msg.header.opcode == 0) ? 0 : 4;
+    msg.header.ancount = 1;
+
+    DnsResourceRecord answer{};
+    answer.name = {"codecrafters", "io"};
+    answer.type = 1;
+    answer.cls = 1;
+    answer.ttl = 60;
+    answer.rdata = {std::byte{0x08}, std::byte{0x08}, std::byte{0x08}, std::byte{0x08}};
+    msg.answers.push_back(std::move(answer));
+
+    return msg.serialize();
+}
+
 class DnsServer {
     int sockfd_{-1};
     uint16_t port_;
-
-    static auto create_response(std::span<const std::byte> request) -> std::vector<std::byte> {
-        auto msg = DnsMessage::parse(request);
-        msg.header.qr = true;
-        msg.header.ancount = 1;
-
-        DnsResourceRecord answer{};
-        answer.name = {"codecrafters", "io"};
-        answer.type = 1;
-        answer.cls = 1;
-        answer.ttl = 60;
-        answer.rdata = {std::byte{0x08}, std::byte{0x08}, std::byte{0x08}, std::byte{0x08}};
-        msg.answers.push_back(std::move(answer));
-
-        return msg.serialize();
-    }
   public:
     explicit DnsServer(uint16_t port) : port_{port} {}
 
