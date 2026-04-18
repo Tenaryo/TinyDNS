@@ -1,4 +1,4 @@
-# Mini DNS
+# TinyDNS
 
 A zero-dependency, C++23 DNS server — modern language features, clean architecture, and strict compile-time safety.
 
